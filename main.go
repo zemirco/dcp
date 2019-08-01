@@ -9,6 +9,7 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/zemirco/dcp/block"
 	"github.com/zemirco/dcp/frame"
 	"github.com/zemirco/dcp/option"
 	"github.com/zemirco/dcp/service"
@@ -45,7 +46,7 @@ var destination = [6]byte{
 
 const etherType uint16 = 0x8892
 
-type block struct {
+type myBlock struct {
 	option    option.Option
 	suboption uint8
 }
@@ -93,7 +94,7 @@ func main() {
 
 	// dcp data length
 
-	b := &block{
+	b := &myBlock{
 		option:    option.All,
 		suboption: 255,
 	}
@@ -179,11 +180,8 @@ func main() {
 }
 
 func decodeBlock(b []byte) int {
-	opt := option.Option(b[0])
-	fmt.Println("option", opt)
-
-	subopt := b[1]
-	fmt.Println("suboption", subopt)
+	optSubopt := block.OptionSuboption(binary.BigEndian.Uint16(b[0:2]))
+	fmt.Println("option suboption", optSubopt)
 
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
@@ -191,17 +189,15 @@ func decodeBlock(b []byte) int {
 	info := binary.BigEndian.Uint16(b[4:6])
 	fmt.Println("info", info)
 
-	switch {
+	switch optSubopt {
 
-	// device properties && name of station
-	case opt == option.DeviceProperties && subopt == 2:
+	case block.DevicePropertiesNameOfStation:
 
 		// info length is 2
 		name := string(b[6 : 6+length-2])
 		fmt.Println("name", name)
 
-	// ip && ip parameter
-	case opt == option.IP && subopt == 2:
+	case block.IPIPParameter:
 
 		ip := net.IP(b[6:10])
 		fmt.Println("ip", ip.String())
