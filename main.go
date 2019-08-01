@@ -8,6 +8,10 @@ import (
 	"math/rand"
 	"net"
 	"syscall"
+
+	"github.com/zemirco/dcp/frame"
+	"github.com/zemirco/dcp/option"
+	"github.com/zemirco/dcp/service"
 )
 
 type ethernetII struct {
@@ -17,21 +21,12 @@ type ethernetII struct {
 }
 
 type telegram struct {
-	FrameID       frameID
-	ServiceID     serviceID
-	ServiceType   serviceType
+	FrameID       frame.ID
+	ServiceID     service.ID
+	ServiceType   service.Type
 	XID           uint32
 	ResponseDelay uint16
 }
-
-type option byte
-
-const (
-	optionIP               option = 1
-	optionDeviceProperties option = 2
-	optionDeviceInitiative option = 6
-	optionAll              option = 255
-)
 
 var destination = [6]byte{
 	0x01, 0x0e, 0xcf, 0x00, 0x00, 0x00,
@@ -50,30 +45,8 @@ var destination = [6]byte{
 
 const etherType uint16 = 0x8892
 
-type frameID uint16
-
-const (
-	frameIDIdentifyRequest  frameID = 0xfefe
-	frameIDIdentifyResponse frameID = 0xfeff
-)
-
-type serviceID byte
-
-const (
-	serviceIDGet      serviceID = 1
-	serviceIDSet      serviceID = 2
-	serviceIDIdentify serviceID = 5
-)
-
-type serviceType byte
-
-const (
-	serviceTypeRequest  serviceType = 0
-	serviceTypeResponse serviceType = 1
-)
-
 type block struct {
-	option    option
+	option    option.Option
 	suboption uint8
 }
 
@@ -86,7 +59,7 @@ func main() {
 
 	ifname := "enxa44cc8e54721"
 
-	frame := make([]byte, 30)
+	f := make([]byte, 30)
 
 	interf, err := net.InterfaceByName(ifname)
 	if err != nil {
@@ -104,24 +77,24 @@ func main() {
 
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, e)
-	copy(frame[0:], buf.Bytes())
+	copy(f[0:], buf.Bytes())
 
 	t := telegram{
-		FrameID:       frameIDIdentifyRequest,
-		ServiceID:     serviceIDIdentify,
-		ServiceType:   serviceTypeRequest,
+		FrameID:       frame.IdentifyRequest,
+		ServiceID:     service.Identify,
+		ServiceType:   service.Request,
 		XID:           rand.Uint32(),
 		ResponseDelay: 255,
 	}
 
 	buf.Reset()
 	binary.Write(&buf, binary.BigEndian, t)
-	copy(frame[14:], buf.Bytes())
+	copy(f[14:], buf.Bytes())
 
 	// dcp data length
 
 	b := &block{
-		option:    optionAll,
+		option:    option.All,
 		suboption: 255,
 	}
 
@@ -129,13 +102,13 @@ func main() {
 	binary.Write(&buf, binary.BigEndian, b)
 
 	// +2 because DCPBlockLength
-	binary.BigEndian.PutUint16(frame[24:26], uint16(len(buf.Bytes()))+2)
+	binary.BigEndian.PutUint16(f[24:26], uint16(len(buf.Bytes()))+2)
 
-	copy(frame[26:28], buf.Bytes())
+	copy(f[26:28], buf.Bytes())
 
-	binary.BigEndian.PutUint16(frame[28:30], 0)
+	binary.BigEndian.PutUint16(f[28:30], 0)
 
-	log.Printf("% x\n", frame)
+	log.Printf("% x\n", f)
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, htons(0x8892))
 
@@ -149,7 +122,7 @@ func main() {
 		Ifindex: interf.Index,
 	}
 
-	if err := syscall.Sendto(fd, frame, 0, &addr); err != nil {
+	if err := syscall.Sendto(fd, f, 0, &addr); err != nil {
 		panic(err)
 	}
 
@@ -206,11 +179,11 @@ func main() {
 }
 
 func decodeBlock(b []byte) int {
-	option := option(b[0])
-	fmt.Println("option", option)
+	opt := option.Option(b[0])
+	fmt.Println("option", opt)
 
-	suboption := b[1]
-	fmt.Println("suboption", suboption)
+	subopt := b[1]
+	fmt.Println("suboption", subopt)
 
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
@@ -221,14 +194,14 @@ func decodeBlock(b []byte) int {
 	switch {
 
 	// device properties && name of station
-	case option == optionDeviceProperties && suboption == 2:
+	case opt == option.DeviceProperties && subopt == 2:
 
 		// info length is 2
 		name := string(b[6 : 6+length-2])
 		fmt.Println("name", name)
 
 	// ip && ip parameter
-	case option == optionIP && suboption == 2:
+	case opt == option.IP && subopt == 2:
 
 		ip := net.IP(b[6:10])
 		fmt.Println("ip", ip.String())
