@@ -65,12 +65,6 @@ const (
 	AllSelectorAllSelector OptionSuboption = 0xFFFF
 )
 
-// Something is common interface.
-type Something interface {
-	Unmarshal(b []byte) error
-	Len() int
-}
-
 // Header is block header.
 type Header struct {
 	Option    uint8

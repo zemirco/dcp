@@ -14,10 +14,32 @@ import (
 	"github.com/zemirco/dcp/service"
 )
 
-type ethernetII struct {
-	Destination [6]byte
-	Source      [6]byte
+// EthernetII header.
+type EthernetII struct {
+	Destination net.HardwareAddr
+	Source      net.HardwareAddr
 	EtherType   uint16
+}
+
+// MarshalBinary converts struct into byte slice.
+func (e *EthernetII) MarshalBinary() ([]byte, error) {
+	b := make([]byte, 14)
+
+	copy(b[0:6], e.Destination)
+	copy(b[6:12], e.Source)
+	binary.BigEndian.PutUint16(b[12:14], e.EtherType)
+
+	return b, nil
+}
+
+// UnmarshalBinary unmarshals a byte slice into a EthernetII.
+func (e *EthernetII) UnmarshalBinary(b []byte) error {
+
+	e.Destination = b[0:6]
+	e.Source = b[6:12]
+	e.EtherType = binary.BigEndian.Uint16(b[12:14])
+
+	return nil
 }
 
 type telegram struct {
@@ -28,7 +50,7 @@ type telegram struct {
 	ResponseDelay uint16
 }
 
-var destination = [6]byte{
+var destination = []byte{
 	0x01, 0x0e, 0xcf, 0x00, 0x00, 0x00,
 }
 
@@ -61,18 +83,17 @@ func main() {
 		panic(err)
 	}
 
-	var source [6]byte
-	copy(source[:], interf.HardwareAddr)
-
-	e := ethernetII{
+	e := EthernetII{
 		Destination: destination,
-		Source:      source,
+		Source:      interf.HardwareAddr,
 		EtherType:   etherType,
 	}
 
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, e)
-	copy(f[0:], buf.Bytes())
+	eb, err := e.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	copy(f, eb)
 
 	t := telegram{
 		FrameID:       frame.IdentifyRequest,
@@ -82,7 +103,7 @@ func main() {
 		ResponseDelay: 255,
 	}
 
-	buf.Reset()
+	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, t)
 	copy(f[14:], buf.Bytes())
 
@@ -137,8 +158,10 @@ func main() {
 
 		// fmt.Printf("% x\n", buffer[:n])
 
-		e := ethernetII{}
-		binary.Read(bytes.NewBuffer(buffer[0:]), binary.BigEndian, &e)
+		e := EthernetII{}
+		if err := e.UnmarshalBinary(buffer); err != nil {
+			panic(err)
+		}
 		fmt.Printf("%#v\n", e)
 
 		// device.HardwareAddr = e.Source
@@ -190,13 +213,6 @@ func decodeBlock(b []byte) int {
 
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
-
-	// switch b := event.(type) {
-	// case *block.NameOfStation:
-	// 	fmt.Println(b.NameOfStation)
-	// case *block.IPParameter:
-	// 	fmt.Println(b.IPAddress, b.Subnetmask, b.StandardGateway)
-	// }
 
 	switch optSubopt {
 
