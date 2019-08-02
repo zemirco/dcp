@@ -5,6 +5,17 @@ import (
 	"net"
 )
 
+// Device describes a real device.
+type Device struct {
+	HardwareAddr net.HardwareAddr
+	IPParameter
+	NameOfStation
+	DeviceID
+	DeviceInstance
+	ManufacturerSpecific
+	DeviceInitiative
+}
+
 // OptionSuboption is two bytes long. First byte is option and second byte is suboption.
 // Combined they are easier to use since suboption reuses values depending on the option.
 // suboption == 1 is mac address for option ip

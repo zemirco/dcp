@@ -125,6 +125,8 @@ func main() {
 	for {
 		buffer := make([]byte, 256)
 
+		var device block.Device
+
 		n, from, err := syscall.Recvfrom(fd, buffer, 0)
 		if err != nil {
 			panic(err)
@@ -138,6 +140,8 @@ func main() {
 		e := ethernetII{}
 		binary.Read(bytes.NewBuffer(buffer[0:]), binary.BigEndian, &e)
 		fmt.Printf("%#v\n", e)
+
+		// device.HardwareAddr = e.Source
 
 		frameID := buffer[14:16]
 		fmt.Printf("frame id % x\n", frameID)
@@ -173,6 +177,8 @@ func main() {
 			length -= blockLength
 			offset += blockLength
 		}
+
+		fmt.Printf("%#v\n", device)
 
 	}
 
