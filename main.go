@@ -11,7 +11,6 @@ import (
 
 	"github.com/zemirco/dcp/block"
 	"github.com/zemirco/dcp/frame"
-	"github.com/zemirco/dcp/option"
 	"github.com/zemirco/dcp/service"
 )
 
@@ -45,11 +44,6 @@ var destination = [6]byte{
 // }
 
 const etherType uint16 = 0x8892
-
-type myBlock struct {
-	option    option.Option
-	suboption uint8
-}
 
 // host order (usually little endian) -> network order (big endian)
 func htons(n int) int {
@@ -94,9 +88,9 @@ func main() {
 
 	// dcp data length
 
-	b := &myBlock{
-		option:    option.All,
-		suboption: 255,
+	b := &block.Header{
+		Option:    255,
+		Suboption: 255,
 	}
 
 	buf.Reset()
@@ -163,16 +157,21 @@ func main() {
 		// dcpDataLength := buffer[24:26]
 		// fmt.Printf("dcp data length % x\n", dcpDataLength)
 
-		length := binary.BigEndian.Uint16(buffer[24:26])
+		length := int(binary.BigEndian.Uint16(buffer[24:26]))
 		fmt.Println("length", length)
 
-		// fmt.Println(int(dcpDataLength))
+		offset := 0
 
-		blockLength := decodeBlock(buffer[26:])
+		for length > 0 {
+			blockLength := decodeBlock(buffer[26+offset:])
 
-		if int(length)-blockLength > 0 {
-			blockLength = decodeBlock(buffer[26+blockLength:])
+			// add padding for odd length block
+			if blockLength%2 == 1 {
+				blockLength++
+			}
 
+			length -= blockLength
+			offset += blockLength
 		}
 
 	}
@@ -186,27 +185,63 @@ func decodeBlock(b []byte) int {
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
 
-	info := binary.BigEndian.Uint16(b[4:6])
-	fmt.Println("info", info)
+	// switch b := event.(type) {
+	// case *block.NameOfStation:
+	// 	fmt.Println(b.NameOfStation)
+	// case *block.IPParameter:
+	// 	fmt.Println(b.IPAddress, b.Subnetmask, b.StandardGateway)
+	// }
 
 	switch optSubopt {
 
 	case block.DevicePropertiesNameOfStation:
 
-		// info length is 2
-		name := string(b[6 : 6+length-2])
-		fmt.Println("name", name)
+		var bnos block.NameOfStation
+		if err := bnos.Unmarshal(b); err != nil {
+			panic(err)
+		}
+		fmt.Printf("%#v\n", bnos)
+		fmt.Println(bnos.NameOfStation)
 
 	case block.IPIPParameter:
 
-		ip := net.IP(b[6:10])
-		fmt.Println("ip", ip.String())
+		var bip block.IPParameter
+		if err := bip.Unmarshal(b); err != nil {
+			panic(err)
+		}
 
-		subnetmask := net.IP(b[10:14])
-		fmt.Println("subnetmask", subnetmask.String())
+		fmt.Printf("%#v\n", bip)
+		fmt.Println(bip.IPAddress, bip.Subnetmask, bip.StandardGateway)
 
-		gateway := net.IP(b[14:18])
-		fmt.Println("gateway", gateway.String())
+	case block.DevicePropertiesDeviceInstance:
+
+		var bdi block.DeviceInstance
+		if err := bdi.Unmarshal(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bdi)
+		fmt.Println(bdi.DeviceInstanceHigh, bdi.DeviceInstanceLow)
+
+	case block.DevicePropertiesManufacturerSpecific:
+
+		var bms block.ManufacturerSpecific
+		if err := bms.Unmarshal(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bms)
+		fmt.Println(bms.DeviceVendorValue)
+
+	case block.DeviceInitiativeDeviceInitiative:
+
+		var bdi block.DeviceInitiative
+		if err := bdi.Unmarshal(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bdi)
+		fmt.Println(bdi.Value)
 	}
 
 	return 1 + 1 + 2 + int(length)
