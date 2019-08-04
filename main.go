@@ -11,7 +11,9 @@ import (
 
 	"github.com/zemirco/dcp/block"
 	"github.com/zemirco/dcp/frame"
+	"github.com/zemirco/dcp/option"
 	"github.com/zemirco/dcp/service"
+	"github.com/zemirco/dcp/suboption"
 )
 
 // EthernetII header.
@@ -208,15 +210,18 @@ func main() {
 }
 
 func decodeBlock(b []byte) int {
-	optSubopt := block.OptionSuboption(binary.BigEndian.Uint16(b[0:2]))
-	fmt.Println("option suboption", optSubopt)
+	opt := option.Option(b[0])
+	fmt.Println("option", opt)
+
+	subopt := suboption.Suboption(b[1])
+	fmt.Println("suboption", subopt)
 
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
 
-	switch optSubopt {
+	switch {
 
-	case block.DevicePropertiesNameOfStation:
+	case opt == option.DeviceProperties && subopt == suboption.NameOfStation:
 
 		var bnos block.NameOfStation
 		if err := bnos.Unmarshal(b); err != nil {
@@ -225,7 +230,7 @@ func decodeBlock(b []byte) int {
 		fmt.Printf("%#v\n", bnos)
 		fmt.Println(bnos.NameOfStation)
 
-	case block.IPIPParameter:
+	case opt == option.IP && subopt == suboption.IPParameter:
 
 		var bip block.IPParameter
 		if err := bip.Unmarshal(b); err != nil {
@@ -235,7 +240,7 @@ func decodeBlock(b []byte) int {
 		fmt.Printf("%#v\n", bip)
 		fmt.Println(bip.IPAddress, bip.Subnetmask, bip.StandardGateway)
 
-	case block.DevicePropertiesDeviceInstance:
+	case opt == option.DeviceProperties && subopt == suboption.DeviceInstance:
 
 		var bdi block.DeviceInstance
 		if err := bdi.Unmarshal(b); err != nil {
@@ -245,7 +250,7 @@ func decodeBlock(b []byte) int {
 		fmt.Printf("%#v\n", bdi)
 		fmt.Println(bdi.DeviceInstanceHigh, bdi.DeviceInstanceLow)
 
-	case block.DevicePropertiesManufacturerSpecific:
+	case opt == option.DeviceProperties && subopt == suboption.ManufacturerSpecific:
 
 		var bms block.ManufacturerSpecific
 		if err := bms.Unmarshal(b); err != nil {
@@ -255,7 +260,7 @@ func decodeBlock(b []byte) int {
 		fmt.Printf("%#v\n", bms)
 		fmt.Println(bms.DeviceVendorValue)
 
-	case block.DeviceInitiativeDeviceInitiative:
+	case opt == option.DeviceInitiative && subopt == suboption.DeviceInitiative:
 
 		var bdi block.DeviceInitiative
 		if err := bdi.Unmarshal(b); err != nil {
