@@ -1,90 +1,79 @@
 package block
 
 import (
+	"encoding"
 	"encoding/binary"
 	"net"
+
+	"github.com/zemirco/dcp/option"
+	"github.com/zemirco/dcp/suboption"
 )
 
-// Device describes a real device.
-type Device struct {
-	HardwareAddr net.HardwareAddr
-	IPParameter
-	NameOfStation
-	DeviceID
-	DeviceInstance
-	ManufacturerSpecific
-	DeviceInitiative
+// // Device describes a real device.
+// type Device struct {
+// 	HardwareAddr net.HardwareAddr
+// 	IPParameter
+// 	NameOfStation
+// 	DeviceID
+// 	DeviceInstance
+// 	ManufacturerSpecific
+// 	DeviceInitiative
+// }
+
+// Block interface.
+type Block interface {
+	Len() int
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
 }
-
-// OptionSuboption is two bytes long. First byte is option and second byte is suboption.
-// Combined they are easier to use since suboption reuses values depending on the option.
-// suboption == 1 is mac address for option ip
-// suboption == 1 is device vendor for option device properties.
-type OptionSuboption uint16
-
-// Option and Suboption combined.
-const (
-	// option IP
-	IPMACAddress  OptionSuboption = 0x0101
-	IPIPParameter OptionSuboption = 0x0102
-	IPFullIPSuite OptionSuboption = 0x0103
-
-	// option DeviceProperties
-	DevicePropertiesManufacturerSpecific OptionSuboption = 0x0201
-	DevicePropertiesNameOfStation        OptionSuboption = 0x0202
-	DevicePropertiesDeviceID             OptionSuboption = 0x0203
-	DevicePropertiesDeviceRole           OptionSuboption = 0x0204
-	DevicePropertiesDeviceOptions        OptionSuboption = 0x0205
-	DevicePropertiesAliasName            OptionSuboption = 0x0206
-	DevicePropertiesDeviceInstance       OptionSuboption = 0x0207
-	DevicePropertiesOEMDeviceID          OptionSuboption = 0x0208
-
-	// option DHCP
-	DHCPHostName                  OptionSuboption = 0x030C
-	DHCPVendorSpecificInformation OptionSuboption = 0x032B
-	DHCPServerIdentifier          OptionSuboption = 0x0336
-	DHCPParameterRequestList      OptionSuboption = 0x0337
-	DHCPClassIdentifier           OptionSuboption = 0x033C
-	DHCPDHCPClientIdentifier      OptionSuboption = 0x033D
-	DHCPFullyQualifiedDomainName  OptionSuboption = 0x0351
-	DHCPUUIDClientIdentifier      OptionSuboption = 0x0361
-	DHCPDHCP                      OptionSuboption = 0x03FF
-
-	// option Control
-	ControlStart          OptionSuboption = 0x0501
-	ControlStop           OptionSuboption = 0x0502
-	ControlSignal         OptionSuboption = 0x0503
-	ControlResponse       OptionSuboption = 0x0504
-	ControlFactoryReset   OptionSuboption = 0x0505
-	ControlResetToFactory OptionSuboption = 0x0506
-
-	// option DeviceInitiative
-	DeviceInitiativeDeviceInitiative OptionSuboption = 0x0601
-
-	// option All
-	AllSelectorAllSelector OptionSuboption = 0xFFFF
-)
 
 // Header is block header.
 type Header struct {
-	Option    uint8
-	Suboption uint8
+	Option    option.Option
+	Suboption suboption.Suboption
 	Length    uint16
 	Info      uint16
 }
 
-// Unmarshal turns bytes into struct.
-func (h *Header) Unmarshal(b []byte) error {
-	h.Option = b[0]
-	h.Suboption = b[1]
+// MarshalBinary converts struct into byte slice.
+func (h *Header) MarshalBinary() ([]byte, error) {
+	length := 4
+	if h.Length != 0 {
+		length += 2
+	}
+
+	b := make([]byte, length)
+	b[0] = uint8(h.Option)
+	b[1] = uint8(h.Suboption)
+	binary.BigEndian.PutUint16(b[2:4], h.Length)
+
+	if h.Length != 0 {
+		binary.BigEndian.PutUint16(b[4:6], h.Info)
+	}
+
+	return b, nil
+}
+
+// UnmarshalBinary turns bytes into struct.
+func (h *Header) UnmarshalBinary(b []byte) error {
+	h.Option = option.Option(b[0])
+	h.Suboption = suboption.Suboption(b[1])
 	h.Length = binary.BigEndian.Uint16(b[2:4])
-	h.Info = binary.BigEndian.Uint16(b[4:6])
+
+	if h.Length != 0 {
+		h.Info = binary.BigEndian.Uint16(b[4:6])
+	}
+
 	return nil
 }
 
 // Len returns block header length.
 func (h *Header) Len() int {
-	return 6
+	length := 4
+	if h.Length != 0 {
+		length += 2
+	}
+	return length
 }
 
 // IPParameter is an ip parameter block.
@@ -95,9 +84,9 @@ type IPParameter struct {
 	StandardGateway net.IP
 }
 
-// Unmarshal turns bytes into struct.
-func (i *IPParameter) Unmarshal(b []byte) error {
-	if err := i.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (i *IPParameter) UnmarshalBinary(b []byte) error {
+	if err := i.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 
@@ -119,9 +108,9 @@ type NameOfStation struct {
 	NameOfStation string
 }
 
-// Unmarshal turns bytes into struct.
-func (n *NameOfStation) Unmarshal(b []byte) error {
-	if err := n.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (n *NameOfStation) UnmarshalBinary(b []byte) error {
+	if err := n.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 
@@ -142,9 +131,9 @@ type DeviceID struct {
 	DeviceID uint16
 }
 
-// Unmarshal turns bytes into struct.
-func (d *DeviceID) Unmarshal(b []byte) error {
-	if err := d.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (d *DeviceID) UnmarshalBinary(b []byte) error {
+	if err := d.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 
@@ -161,9 +150,9 @@ type DeviceInstance struct {
 	DeviceInstanceLow  uint8
 }
 
-// Unmarshal turns bytes into struct.
-func (d *DeviceInstance) Unmarshal(b []byte) error {
-	if err := d.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (d *DeviceInstance) UnmarshalBinary(b []byte) error {
+	if err := d.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 
@@ -179,9 +168,9 @@ type ManufacturerSpecific struct {
 	DeviceVendorValue string
 }
 
-// Unmarshal turns bytes into struct.
-func (m *ManufacturerSpecific) Unmarshal(b []byte) error {
-	if err := m.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (m *ManufacturerSpecific) UnmarshalBinary(b []byte) error {
+	if err := m.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 
@@ -196,9 +185,9 @@ type DeviceInitiative struct {
 	Value uint16
 }
 
-// Unmarshal turns bytes into struct.
-func (d *DeviceInitiative) Unmarshal(b []byte) error {
-	if err := d.Header.Unmarshal(b); err != nil {
+// UnmarshalBinary turns bytes into struct.
+func (d *DeviceInitiative) UnmarshalBinary(b []byte) error {
+	if err := d.Header.UnmarshalBinary(b); err != nil {
 		return err
 	}
 

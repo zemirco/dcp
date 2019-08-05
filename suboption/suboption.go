@@ -37,5 +37,5 @@ const (
 
 	DeviceInitiative Suboption = 0x01
 
-	AllSelector Suboption = 0xFF
+	All Suboption = 0xFF
 )
