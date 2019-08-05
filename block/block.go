@@ -9,17 +9,6 @@ import (
 	"github.com/zemirco/dcp/suboption"
 )
 
-// // Device describes a real device.
-// type Device struct {
-// 	HardwareAddr net.HardwareAddr
-// 	IPParameter
-// 	NameOfStation
-// 	DeviceID
-// 	DeviceInstance
-// 	ManufacturerSpecific
-// 	DeviceInitiative
-// }
-
 // Block interface.
 type Block interface {
 	Len() int
@@ -74,6 +63,26 @@ func (h *Header) Len() int {
 		length += 2
 	}
 	return length
+}
+
+// All is an all block.
+type All struct {
+	Header
+}
+
+// UnmarshalBinary turns bytes into struct.
+func (a *All) UnmarshalBinary(b []byte) error {
+	return a.Header.UnmarshalBinary(b)
+}
+
+// MarshalBinary converts struct into byte slice.
+func (a *All) MarshalBinary() ([]byte, error) {
+	return a.Header.MarshalBinary()
+}
+
+// Len returns length for ip parameter block.
+func (a *All) Len() int {
+	return a.Header.Len()
 }
 
 // IPParameter is an ip parameter block.
