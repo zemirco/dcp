@@ -3,7 +3,6 @@ package frame
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"net"
 
@@ -136,7 +135,6 @@ func (f *Frame) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return b, err
 	}
-	fmt.Println(blockBytes)
 	copy(b[f.EthernetII.Len()+f.Telegram.Len():], blockBytes)
 
 	return b, nil

@@ -90,9 +90,12 @@ func (i *IPParameter) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	i.IPAddress = net.IP(b[6:10])
-	i.Subnetmask = net.IP(b[10:14])
-	i.StandardGateway = net.IP(b[14:18])
+	o := i.Header.Len()
+	i.IPAddress = net.IP(b[o : o+4])
+	o += 4
+	i.Subnetmask = net.IP(b[o : o+4])
+	o += 4
+	i.StandardGateway = net.IP(b[o : o+4])
 
 	return nil
 }
@@ -114,7 +117,8 @@ func (n *NameOfStation) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	n.NameOfStation = string(b[6 : 6+n.Header.Length-2])
+	i := n.Header.Len()
+	n.NameOfStation = string(b[i : int(i)+int(n.Header.Length)-2])
 
 	return nil
 }
@@ -137,8 +141,10 @@ func (d *DeviceID) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	d.VendorID = binary.BigEndian.Uint16(b[6:8])
-	d.DeviceID = binary.BigEndian.Uint16(b[8:10])
+	i := d.Header.Len()
+	d.VendorID = binary.BigEndian.Uint16(b[i : i+2])
+	i += 2
+	d.DeviceID = binary.BigEndian.Uint16(b[i : i+2])
 
 	return nil
 }
@@ -156,8 +162,10 @@ func (d *DeviceInstance) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	d.DeviceInstanceHigh = b[6]
-	d.DeviceInstanceLow = b[7]
+	i := d.Header.Len()
+	d.DeviceInstanceHigh = b[i]
+	i++
+	d.DeviceInstanceLow = b[i]
 
 	return nil
 }
@@ -174,7 +182,8 @@ func (m *ManufacturerSpecific) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	m.DeviceVendorValue = string(b[6 : 6+m.Header.Length-2])
+	i := m.Header.Len()
+	m.DeviceVendorValue = string(b[i : i+int(m.Header.Length)-2])
 
 	return nil
 }
@@ -191,7 +200,8 @@ func (d *DeviceInitiative) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	d.Value = binary.BigEndian.Uint16(b[6:8])
+	i := d.Header.Len()
+	d.Value = binary.BigEndian.Uint16(b[i : i+2])
 
 	return nil
 }
