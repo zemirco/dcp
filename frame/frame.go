@@ -169,66 +169,58 @@ func (t *Telegram) decodeBlock(b []byte) int {
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
 
+	hasInfo := t.ServiceID == service.Identify && t.ServiceType == service.Response
+
 	switch {
 
 	case opt == option.Properties && subopt == suboption.NameOfStation:
 
-		var bnos block.NameOfStation
-		if err := bnos.UnmarshalBinary(b); err != nil {
+		t.NameOfStation = block.NewNameOfStation(hasInfo)
+		if err := t.NameOfStation.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
-		fmt.Printf("%#v\n", bnos)
-		fmt.Println(bnos.NameOfStation)
-
-		t.NameOfStation = &bnos
+		fmt.Printf("%#v\n", t.NameOfStation)
+		fmt.Println(t.NameOfStation.NameOfStation)
 
 	case opt == option.IP && subopt == suboption.IPParameter:
 
-		var bip block.IPParameter
-		if err := bip.UnmarshalBinary(b); err != nil {
+		t.IPParameter = block.NewIPParameter(hasInfo)
+		if err := t.IPParameter.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("%#v\n", bip)
-		fmt.Println(bip.IPAddress, bip.Subnetmask, bip.StandardGateway)
-
-		t.IPParameter = &bip
+		fmt.Printf("%#v\n", t.IPParameter)
+		fmt.Println(t.IPParameter.IPAddress, t.IPParameter.Subnetmask, t.IPParameter.StandardGateway)
 
 	case opt == option.Properties && subopt == suboption.DeviceInstance:
 
-		var bdi block.DeviceInstance
-		if err := bdi.UnmarshalBinary(b); err != nil {
+		t.DeviceInstance = block.NewDeviceInstance(hasInfo)
+		if err := t.DeviceInstance.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("%#v\n", bdi)
-		fmt.Println(bdi.DeviceInstanceHigh, bdi.DeviceInstanceLow)
-
-		t.DeviceInstance = &bdi
+		fmt.Printf("%#v\n", t.DeviceInstance)
+		fmt.Println(t.DeviceInstance.DeviceInstanceHigh, t.DeviceInstance.DeviceInstanceLow)
 
 	case opt == option.Properties && subopt == suboption.ManufacturerSpecific:
 
-		var bms block.ManufacturerSpecific
-		if err := bms.UnmarshalBinary(b); err != nil {
+		t.ManufacturerSpecific = block.NewManufacturerSpecific(hasInfo)
+		if err := t.ManufacturerSpecific.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("%#v\n", bms)
-		fmt.Println(bms.DeviceVendorValue)
-
-		t.ManufacturerSpecific = &bms
+		fmt.Printf("%#v\n", t.ManufacturerSpecific)
+		fmt.Println(t.ManufacturerSpecific.DeviceVendorValue)
 
 	case opt == option.Initiative && subopt == suboption.DeviceInitiative:
 
-		var bdi block.DeviceInitiative
-		if err := bdi.UnmarshalBinary(b); err != nil {
+		t.DeviceInitiative = block.NewDeviceInitiative(hasInfo)
+		if err := t.DeviceInitiative.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("%#v\n", bdi)
-		fmt.Println(bdi.Value)
-
-		t.DeviceInitiative = &bdi
+		fmt.Printf("%#v\n", t.DeviceInitiative)
+		fmt.Println(t.DeviceInitiative.Value)
 	}
 
 	return 1 + 1 + 2 + int(length)
@@ -321,9 +313,5 @@ func (f *Frame) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	if err := f.Telegram.UnmarshalBinary(b[f.EthernetII.Len():]); err != nil {
-		return err
-	}
-
-	return nil
+	return f.Telegram.UnmarshalBinary(b[f.EthernetII.Len():])
 }

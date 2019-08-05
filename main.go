@@ -5,6 +5,7 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/zemirco/dcp/frame"
 )
 
@@ -61,11 +62,8 @@ func main() {
 		if err := f.UnmarshalBinary(buffer); err != nil {
 			panic(err)
 		}
-		fmt.Printf("%#v\n", f)
 
-		if f.Telegram.NameOfStation != nil {
-			fmt.Println("#####", f.Telegram.NameOfStation.NameOfStation)
-		}
+		spew.Dump(f)
 
 	}
 

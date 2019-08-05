@@ -21,7 +21,11 @@ type Header struct {
 	Option    option.Option
 	Suboption suboption.Suboption
 	Length    uint16
-	Info      uint16
+
+	HasInfo      bool
+	Info         uint16
+	HasQualifier bool
+	Qualifier    uint16
 }
 
 // MarshalBinary converts struct into byte slice.
@@ -32,12 +36,26 @@ func (h *Header) MarshalBinary() ([]byte, error) {
 	}
 
 	b := make([]byte, length)
-	b[0] = uint8(h.Option)
-	b[1] = uint8(h.Suboption)
-	binary.BigEndian.PutUint16(b[2:4], h.Length)
 
-	if h.Length != 0 {
-		binary.BigEndian.PutUint16(b[4:6], h.Info)
+	offset := 0
+
+	b[offset] = uint8(h.Option)
+	offset++
+
+	b[offset] = uint8(h.Suboption)
+	offset++
+
+	binary.BigEndian.PutUint16(b[offset:offset+2], h.Length)
+	offset += 2
+
+	if h.HasInfo {
+		binary.BigEndian.PutUint16(b[offset:offset+2], h.Info)
+		offset += 2
+	}
+
+	if h.HasQualifier {
+		binary.BigEndian.PutUint16(b[offset:offset+2], h.Qualifier)
+		offset += 2
 	}
 
 	return b, nil
@@ -45,12 +63,25 @@ func (h *Header) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary turns bytes into struct.
 func (h *Header) UnmarshalBinary(b []byte) error {
-	h.Option = option.Option(b[0])
-	h.Suboption = suboption.Suboption(b[1])
-	h.Length = binary.BigEndian.Uint16(b[2:4])
+	offset := 0
 
-	if h.Length != 0 {
-		h.Info = binary.BigEndian.Uint16(b[4:6])
+	h.Option = option.Option(b[offset])
+	offset++
+
+	h.Suboption = suboption.Suboption(b[offset])
+	offset++
+
+	h.Length = binary.BigEndian.Uint16(b[offset : offset+2])
+	offset += 2
+
+	if h.HasInfo {
+		h.Info = binary.BigEndian.Uint16(b[offset : offset+2])
+		offset += 2
+	}
+
+	if h.HasQualifier {
+		h.Qualifier = binary.BigEndian.Uint16(b[offset : offset+2])
+		offset += 2
 	}
 
 	return nil
@@ -59,7 +90,10 @@ func (h *Header) UnmarshalBinary(b []byte) error {
 // Len returns block header length.
 func (h *Header) Len() int {
 	length := 4
-	if h.Length != 0 {
+	if h.HasInfo {
+		length += 2
+	}
+	if h.HasQualifier {
 		length += 2
 	}
 	return length
@@ -93,6 +127,15 @@ type IPParameter struct {
 	StandardGateway net.IP
 }
 
+// NewIPParameter returns a new block.
+func NewIPParameter(hasInfo bool) *IPParameter {
+	return &IPParameter{
+		Header: Header{
+			HasInfo: hasInfo,
+		},
+	}
+}
+
 // UnmarshalBinary turns bytes into struct.
 func (i *IPParameter) UnmarshalBinary(b []byte) error {
 	if err := i.Header.UnmarshalBinary(b); err != nil {
@@ -118,6 +161,15 @@ func (i *IPParameter) Len() int {
 type NameOfStation struct {
 	Header
 	NameOfStation string
+}
+
+// NewNameOfStation returns a new block.
+func NewNameOfStation(hasInfo bool) *NameOfStation {
+	return &NameOfStation{
+		Header: Header{
+			HasInfo: hasInfo,
+		},
+	}
 }
 
 // UnmarshalBinary turns bytes into struct.
@@ -165,6 +217,15 @@ type DeviceInstance struct {
 	DeviceInstanceLow  uint8
 }
 
+// NewDeviceInstance returns a new block.
+func NewDeviceInstance(hasInfo bool) *DeviceInstance {
+	return &DeviceInstance{
+		Header: Header{
+			HasInfo: hasInfo,
+		},
+	}
+}
+
 // UnmarshalBinary turns bytes into struct.
 func (d *DeviceInstance) UnmarshalBinary(b []byte) error {
 	if err := d.Header.UnmarshalBinary(b); err != nil {
@@ -185,6 +246,15 @@ type ManufacturerSpecific struct {
 	DeviceVendorValue string
 }
 
+// NewManufacturerSpecific returns a new block.
+func NewManufacturerSpecific(hasInfo bool) *ManufacturerSpecific {
+	return &ManufacturerSpecific{
+		Header: Header{
+			HasInfo: hasInfo,
+		},
+	}
+}
+
 // UnmarshalBinary turns bytes into struct.
 func (m *ManufacturerSpecific) UnmarshalBinary(b []byte) error {
 	if err := m.Header.UnmarshalBinary(b); err != nil {
@@ -201,6 +271,15 @@ func (m *ManufacturerSpecific) UnmarshalBinary(b []byte) error {
 type DeviceInitiative struct {
 	Header
 	Value uint16
+}
+
+// NewDeviceInitiative returns a new block.
+func NewDeviceInitiative(hasInfo bool) *DeviceInitiative {
+	return &DeviceInitiative{
+		Header: Header{
+			HasInfo: hasInfo,
+		},
+	}
 }
 
 // UnmarshalBinary turns bytes into struct.
