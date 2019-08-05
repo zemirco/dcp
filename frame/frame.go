@@ -1,7 +1,6 @@
 package frame
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"math/rand"
@@ -64,18 +63,95 @@ type Telegram struct {
 	XID           uint32
 	ResponseDelay uint16
 	DCPDataLength uint16
+
+	// blocks
+	All                  *block.All
+	NameOfStation        *block.NameOfStation
+	IPParameter          *block.IPParameter
+	DeviceInstance       *block.DeviceInstance
+	ManufacturerSpecific *block.ManufacturerSpecific
+	DeviceInitiative     *block.DeviceInitiative
 }
 
 // UnmarshalBinary unmarshals a byte slice into a EthernetII.
 func (t *Telegram) UnmarshalBinary(b []byte) error {
-	return binary.Read(bytes.NewBuffer(b), binary.BigEndian, t)
+	i := 0
+
+	t.FrameID = ID(binary.BigEndian.Uint16(b[i : i+2]))
+	i += 2
+
+	t.ServiceID = service.ID(b[i])
+	i++
+
+	t.ServiceType = service.Type(b[i])
+	i++
+
+	t.XID = binary.BigEndian.Uint32(b[i : i+4])
+	i += 4
+
+	t.ResponseDelay = binary.BigEndian.Uint16(b[i : i+2])
+	i += 2
+
+	t.DCPDataLength = binary.BigEndian.Uint16(b[i : i+2])
+	i += 2
+
+	length := int(t.DCPDataLength)
+	offset := 0
+
+	// fmt.Println("####", length)
+
+	for length > 0 {
+		blockLength := t.decodeBlock(b[i+offset:])
+
+		// add padding for odd length block
+		if blockLength%2 == 1 {
+			blockLength++
+		}
+
+		length -= blockLength
+		offset += blockLength
+	}
+
+	return nil
 }
 
 // MarshalBinary converts struct into byte slice.
 func (t *Telegram) MarshalBinary() ([]byte, error) {
-	var b bytes.Buffer
-	binary.Write(&b, binary.BigEndian, t)
-	return b.Bytes(), nil
+	size := 12
+	if t.All != nil {
+		size += t.All.Len()
+	}
+
+	b := make([]byte, size)
+	i := 0
+
+	binary.BigEndian.PutUint16(b[i:i+2], uint16(t.FrameID))
+	i += 2
+
+	b[i] = byte(t.ServiceID)
+	i++
+
+	b[i] = byte(t.ServiceType)
+	i++
+
+	binary.BigEndian.PutUint32(b[i:i+4], t.XID)
+	i += 4
+
+	binary.BigEndian.PutUint16(b[i:i+2], t.ResponseDelay)
+	i += 2
+
+	binary.BigEndian.PutUint16(b[i:i+2], t.DCPDataLength)
+	i += 2
+
+	if t.All != nil {
+		allBytes, err := t.All.MarshalBinary()
+		if err != nil {
+			return b, err
+		}
+		copy(b[i:], allBytes)
+	}
+
+	return b, nil
 }
 
 // Len returns length.
@@ -83,16 +159,85 @@ func (t *Telegram) Len() int {
 	return 12
 }
 
+func (t *Telegram) decodeBlock(b []byte) int {
+	opt := option.Option(b[0])
+	fmt.Println("option", opt)
+
+	subopt := suboption.Suboption(b[1])
+	fmt.Println("suboption", subopt)
+
+	length := binary.BigEndian.Uint16(b[2:4])
+	fmt.Println("length", length)
+
+	switch {
+
+	case opt == option.Properties && subopt == suboption.NameOfStation:
+
+		var bnos block.NameOfStation
+		if err := bnos.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+		fmt.Printf("%#v\n", bnos)
+		fmt.Println(bnos.NameOfStation)
+
+		t.NameOfStation = &bnos
+
+	case opt == option.IP && subopt == suboption.IPParameter:
+
+		var bip block.IPParameter
+		if err := bip.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bip)
+		fmt.Println(bip.IPAddress, bip.Subnetmask, bip.StandardGateway)
+
+		t.IPParameter = &bip
+
+	case opt == option.Properties && subopt == suboption.DeviceInstance:
+
+		var bdi block.DeviceInstance
+		if err := bdi.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bdi)
+		fmt.Println(bdi.DeviceInstanceHigh, bdi.DeviceInstanceLow)
+
+		t.DeviceInstance = &bdi
+
+	case opt == option.Properties && subopt == suboption.ManufacturerSpecific:
+
+		var bms block.ManufacturerSpecific
+		if err := bms.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bms)
+		fmt.Println(bms.DeviceVendorValue)
+
+		t.ManufacturerSpecific = &bms
+
+	case opt == option.Initiative && subopt == suboption.DeviceInitiative:
+
+		var bdi block.DeviceInitiative
+		if err := bdi.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", bdi)
+		fmt.Println(bdi.Value)
+
+		t.DeviceInitiative = &bdi
+	}
+
+	return 1 + 1 + 2 + int(length)
+}
+
 // Frame is a single frame.
 type Frame struct {
 	EthernetII
 	Telegram
-	All                  *block.All
-	NameOfStation        *block.NameOfStation
-	IPParameter          *block.IPParameter
-	DeviceInstance       *block.DeviceInstance
-	ManufacturerSpecific *block.ManufacturerSpecific
-	DeviceInitiative     *block.DeviceInitiative
 }
 
 // NewIdentifyRequest returns an identify request.
@@ -118,8 +263,8 @@ func NewIdentifyRequest(source net.HardwareAddr) *Frame {
 			XID:           rand.Uint32(),
 			ResponseDelay: 255,
 			DCPDataLength: uint16(b.Len()),
+			All:           b,
 		},
-		All: b,
 	}
 }
 
@@ -165,15 +310,6 @@ func (f *Frame) MarshalBinary() ([]byte, error) {
 		return b, err
 	}
 	copy(b[i:], telegramBytes)
-	i += f.Telegram.Len()
-
-	if f.All != nil {
-		allBytes, err := f.All.MarshalBinary()
-		if err != nil {
-			return b, err
-		}
-		copy(b[i:], allBytes)
-	}
 
 	return b, nil
 }
@@ -189,95 +325,5 @@ func (f *Frame) UnmarshalBinary(b []byte) error {
 		return err
 	}
 
-	length := int(f.Telegram.DCPDataLength)
-	offset := 0
-
-	for length > 0 {
-		blockLength := f.decodeBlock(b[26+offset:])
-
-		// add padding for odd length block
-		if blockLength%2 == 1 {
-			blockLength++
-		}
-
-		length -= blockLength
-		offset += blockLength
-	}
-
 	return nil
-}
-
-func (f *Frame) decodeBlock(b []byte) int {
-	opt := option.Option(b[0])
-	fmt.Println("option", opt)
-
-	subopt := suboption.Suboption(b[1])
-	fmt.Println("suboption", subopt)
-
-	length := binary.BigEndian.Uint16(b[2:4])
-	fmt.Println("length", length)
-
-	switch {
-
-	case opt == option.Properties && subopt == suboption.NameOfStation:
-
-		var bnos block.NameOfStation
-		if err := bnos.UnmarshalBinary(b); err != nil {
-			panic(err)
-		}
-		fmt.Printf("%#v\n", bnos)
-		fmt.Println(bnos.NameOfStation)
-
-		f.NameOfStation = &bnos
-
-	case opt == option.IP && subopt == suboption.IPParameter:
-
-		var bip block.IPParameter
-		if err := bip.UnmarshalBinary(b); err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%#v\n", bip)
-		fmt.Println(bip.IPAddress, bip.Subnetmask, bip.StandardGateway)
-
-		f.IPParameter = &bip
-
-	case opt == option.Properties && subopt == suboption.DeviceInstance:
-
-		var bdi block.DeviceInstance
-		if err := bdi.UnmarshalBinary(b); err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%#v\n", bdi)
-		fmt.Println(bdi.DeviceInstanceHigh, bdi.DeviceInstanceLow)
-
-		f.DeviceInstance = &bdi
-
-	case opt == option.Properties && subopt == suboption.ManufacturerSpecific:
-
-		var bms block.ManufacturerSpecific
-		if err := bms.UnmarshalBinary(b); err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%#v\n", bms)
-		fmt.Println(bms.DeviceVendorValue)
-
-		f.ManufacturerSpecific = &bms
-
-	case opt == option.Initiative && subopt == suboption.DeviceInitiative:
-
-		var bdi block.DeviceInitiative
-		if err := bdi.UnmarshalBinary(b); err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%#v\n", bdi)
-		fmt.Println(bdi.Value)
-
-		f.DeviceInitiative = &bdi
-	}
-
-	return 1 + 1 + 2 + int(length)
 }

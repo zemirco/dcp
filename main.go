@@ -62,6 +62,11 @@ func main() {
 			panic(err)
 		}
 		fmt.Printf("%#v\n", f)
+
+		if f.Telegram.NameOfStation != nil {
+			fmt.Println("#####", f.Telegram.NameOfStation.NameOfStation)
+		}
+
 	}
 
 }
