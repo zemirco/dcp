@@ -121,6 +121,9 @@ func (t *Telegram) MarshalBinary() ([]byte, error) {
 	if t.All != nil {
 		size += t.All.Len()
 	}
+	if t.IPParameter != nil {
+		size += t.IPParameter.Len()
+	}
 
 	b := make([]byte, size)
 	i := 0
@@ -149,6 +152,15 @@ func (t *Telegram) MarshalBinary() ([]byte, error) {
 			return b, err
 		}
 		copy(b[i:], allBytes)
+		i += t.All.Len()
+	}
+	if t.IPParameter != nil {
+		ipBytes, err := t.IPParameter.MarshalBinary()
+		if err != nil {
+			return b, err
+		}
+		copy(b[i:], ipBytes)
+		i += t.IPParameter.Len()
 	}
 
 	return b, nil
@@ -170,6 +182,7 @@ func (t *Telegram) decodeBlock(b []byte) int {
 	fmt.Println("length", length)
 
 	hasInfo := t.ServiceID == service.Identify && t.ServiceType == service.Response
+	hasQualifier := false
 
 	switch {
 
@@ -184,7 +197,7 @@ func (t *Telegram) decodeBlock(b []byte) int {
 
 	case opt == option.IP && subopt == suboption.IPParameter:
 
-		t.IPParameter = block.NewIPParameter(hasInfo)
+		t.IPParameter = block.NewIPParameter(hasInfo, hasQualifier)
 		if err := t.IPParameter.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
@@ -260,25 +273,26 @@ func NewIdentifyRequest(source net.HardwareAddr) *Frame {
 	}
 }
 
-// // NewSetRequest returns a set request.
-// func NewSetRequest(source net.HardwareAddr, b block.Block) *Frame {
-// 	return &Frame{
-// 		EthernetII: EthernetII{
-// 			Destination: []byte{0x01, 0x0e, 0xcf, 0x00, 0x00, 0x00},
-// 			Source:      source,
-// 			EtherType:   0x8892,
-// 		},
-// 		Telegram: Telegram{
-// 			FrameID:       IdentifyRequest,
-// 			ServiceID:     service.Identify,
-// 			ServiceType:   service.Request,
-// 			XID:           rand.Uint32(),
-// 			ResponseDelay: 255,
-// 			DCPDataLength: uint16(b.Len()),
-// 		},
-// 		All: b,
-// 	}
-// }
+// NewSetIPParameterRequest returns a set request.
+func NewSetIPParameterRequest(dst, src net.HardwareAddr, b *block.IPParameter) *Frame {
+	return &Frame{
+		EthernetII: EthernetII{
+			Destination: dst,
+			Source:      src,
+			EtherType:   0x8892,
+		},
+		Telegram: Telegram{
+			FrameID:       GetSet,
+			ServiceID:     service.Set,
+			ServiceType:   service.Request,
+			XID:           rand.Uint32(),
+			ResponseDelay: 255,
+			DCPDataLength: uint16(b.Len()),
+			IPParameter:   b,
+			// All: b,
+		},
+	}
+}
 
 // MarshalBinary converts struct into byte slice.
 func (f *Frame) MarshalBinary() ([]byte, error) {

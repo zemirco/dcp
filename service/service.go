@@ -6,7 +6,7 @@ type ID byte
 // Known ids.
 const (
 	Get      ID = 1
-	Set      ID = 2
+	Set      ID = 4
 	Identify ID = 5
 )
 

@@ -31,7 +31,10 @@ type Header struct {
 // MarshalBinary converts struct into byte slice.
 func (h *Header) MarshalBinary() ([]byte, error) {
 	length := 4
-	if h.Length != 0 {
+	if h.HasInfo {
+		length += 2
+	}
+	if h.HasQualifier {
 		length += 2
 	}
 
@@ -128,10 +131,13 @@ type IPParameter struct {
 }
 
 // NewIPParameter returns a new block.
-func NewIPParameter(hasInfo bool) *IPParameter {
+func NewIPParameter(hasInfo, hasQualifier bool) *IPParameter {
 	return &IPParameter{
 		Header: Header{
-			HasInfo: hasInfo,
+			Option:       option.IP,
+			Suboption:    suboption.IPParameter,
+			HasInfo:      hasInfo,
+			HasQualifier: hasQualifier,
 		},
 	}
 }
@@ -150,6 +156,32 @@ func (i *IPParameter) UnmarshalBinary(b []byte) error {
 	i.StandardGateway = net.IP(b[o : o+4])
 
 	return nil
+}
+
+// MarshalBinary converts struct into byte slice.
+func (i *IPParameter) MarshalBinary() ([]byte, error) {
+	size := i.Header.Len() + i.Len()
+
+	b := make([]byte, size)
+
+	bh, err := i.Header.MarshalBinary()
+	if err != nil {
+		return b, err
+	}
+	offset := 0
+
+	copy(b[offset:], bh)
+	offset += i.Header.Len()
+
+	copy(b[offset:offset+4], i.IPAddress)
+	offset += 4
+
+	copy(b[offset:offset+4], i.Subnetmask)
+	offset += 4
+
+	copy(b[offset:offset+4], i.StandardGateway)
+
+	return b, nil
 }
 
 // Len returns length for ip parameter block.
