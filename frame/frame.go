@@ -252,12 +252,14 @@ type Frame struct {
 // NewIdentifyRequest returns an identify request.
 func NewIdentifyRequest(source net.HardwareAddr) *Frame {
 
-	b := &block.All{
-		Header: block.Header{
-			Option:    option.All,
-			Suboption: suboption.All,
-		},
-	}
+	// b := &block.All{
+	// 	Header: block.Header{
+	// 		Option:    option.All,
+	// 		Suboption: suboption.All,
+	// 	},
+	// }
+
+	b := block.NewAll()
 
 	return &Frame{
 		EthernetII: EthernetII{
