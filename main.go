@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
+	"log"
 	"net"
+	"net/http"
 	"syscall"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/zemirco/dcp/block"
+	"github.com/rakyll/statik/fs"
 	"github.com/zemirco/dcp/frame"
 )
 
@@ -17,7 +21,35 @@ func htons(n int) int {
 	return int(int16(byte(n))<<8 | int16(byte(n>>8)))
 }
 
+var db = make(map[string]frame.Frame)
+
 func main() {
+
+	mode := flag.String("mode", "development", "switch between local file system and embedded one.")
+	flag.Parse()
+
+	// add file server
+	if *mode == "production" {
+		statikFS, err := fs.New()
+		if err != nil {
+			panic(err)
+		}
+		http.Handle("/", http.FileServer(statikFS))
+	} else {
+		fmt.Println("serving files from local file system")
+		http.Handle("/", http.FileServer(http.Dir("ui/public")))
+	}
+
+	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(db)
+	})
+
+	// start server
+	go func() {
+		fmt.Println("server running at http://localhost:8085. ctrl+c to stop it.")
+		log.Fatal(http.ListenAndServe(":8085", nil))
+	}()
 
 	ifname := "enxa44cc8e54721"
 
@@ -26,11 +58,11 @@ func main() {
 		panic(err)
 	}
 
-	// f := frame.NewIdentifyRequest(interf.HardwareAddr)
-	// b, err := f.MarshalBinary()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	f := frame.NewIdentifyRequest(interf.HardwareAddr)
+	b, err := f.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, htons(0x8892))
 
@@ -44,22 +76,22 @@ func main() {
 		Ifindex: interf.Index,
 	}
 
-	// request block
-	rb := block.NewIPParameterQualifier()
-	rb.IPAddress = []byte{0xac, 0x13, 0x68, 0x03}
-	rb.Subnetmask = []byte{0xff, 0xff, 0x00, 0x00}
-	rb.StandardGateway = []byte{0x00, 0x00, 0x00, 0x00}
+	// // request block
+	// rb := block.NewIPParameterQualifier()
+	// rb.IPAddress = []byte{0xac, 0x13, 0x68, 0x03}
+	// rb.Subnetmask = []byte{0xff, 0xff, 0x00, 0x00}
+	// rb.StandardGateway = []byte{0x00, 0x00, 0x00, 0x00}
 
-	destination := []byte{0x00, 0x09, 0xe5, 0x00, 0x9a, 0x20}
+	// destination := []byte{0x00, 0x09, 0xe5, 0x00, 0x9a, 0x20}
 
-	req := frame.NewSetIPParameterRequest(destination, interf.HardwareAddr, rb)
-	b, err := req.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
+	// req := frame.NewSetIPParameterRequest(destination, interf.HardwareAddr, rb)
+	// b, err := req.MarshalBinary()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	spew.Dump(req)
-	spew.Dump(b)
+	// spew.Dump(req)
+	// spew.Dump(b)
 
 	if err := syscall.Sendto(fd, b, 0, &addr); err != nil {
 		panic(err)
@@ -82,6 +114,8 @@ func main() {
 		}
 
 		spew.Dump(f)
+
+		db[f.Source.String()] = f
 
 	}
 

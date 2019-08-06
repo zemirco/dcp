@@ -105,7 +105,7 @@ func (t *Telegram) UnmarshalBinary(b []byte) error {
 		blockLength := t.decodeBlock(b[i+offset:])
 
 		// add padding for odd length block
-		if blockLength%2 == 1 {
+		if blockLength%2 != 0 {
 			blockLength++
 		}
 
@@ -172,6 +172,9 @@ func (t *Telegram) Len() int {
 	length := 12
 	if t.IPParameter != nil {
 		length += t.IPParameter.Len()
+	}
+	if t.All != nil {
+		length += t.All.Len()
 	}
 	return length
 }
