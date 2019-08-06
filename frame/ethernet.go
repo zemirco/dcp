@@ -3,6 +3,8 @@ package frame
 import (
 	"encoding/binary"
 	"net"
+
+	"github.com/zemirco/dcp/block"
 )
 
 // EthernetII header.
@@ -11,6 +13,8 @@ type EthernetII struct {
 	Source      net.HardwareAddr
 	EtherType   uint16
 }
+
+var _ block.Block = &EthernetII{}
 
 // MarshalBinary converts struct into byte slice.
 func (e *EthernetII) MarshalBinary() ([]byte, error) {

@@ -29,6 +29,8 @@ type Telegram struct {
 	ControlResponse      *block.ControlResponse
 }
 
+var _ block.Block = &Telegram{}
+
 // UnmarshalBinary unmarshals a byte slice into a EthernetII.
 func (t *Telegram) UnmarshalBinary(b []byte) error {
 	i := 0

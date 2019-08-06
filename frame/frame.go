@@ -24,6 +24,8 @@ type Frame struct {
 	Telegram
 }
 
+var _ block.Block = &Frame{}
+
 // NewIdentifyRequest returns an identify request.
 func NewIdentifyRequest(source net.HardwareAddr) *Frame {
 
@@ -69,9 +71,7 @@ func NewSetIPParameterRequest(dst, src net.HardwareAddr, b *block.IPParameter) *
 
 // MarshalBinary converts struct into byte slice.
 func (f *Frame) MarshalBinary() ([]byte, error) {
-	size := f.EthernetII.Len() + f.Telegram.Len()
-
-	b := make([]byte, size)
+	b := make([]byte, f.Len())
 	i := 0
 
 	ethernetIIBytes, err := f.EthernetII.MarshalBinary()
@@ -98,4 +98,9 @@ func (f *Frame) UnmarshalBinary(b []byte) error {
 	}
 
 	return f.Telegram.UnmarshalBinary(b[f.EthernetII.Len():])
+}
+
+// Len returns length for name of station block.
+func (f *Frame) Len() int {
+	return f.EthernetII.Len() + f.Telegram.Len()
 }
