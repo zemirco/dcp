@@ -65,7 +65,7 @@ const Mac = props => {
     request()
   }, [])
 
-  const onSubmit = async (event) => {
+  const onSubmit = async event => {
     event.preventDefault()
     console.log('here')
     const result = await fetch(`/api/${mac}`, {
@@ -97,7 +97,11 @@ const Mac = props => {
     <div>
       <form onSubmit={onSubmit}>
         <label htmlFor="ip">IP address</label>
-        <input type="text" value={device.IPParameter.IPAddress} onChange={onChangeIP} />
+        <input
+          type="text"
+          value={device.IPParameter.IPAddress}
+          onChange={onChangeIP}
+        />
         <button type="submit">Save</button>
       </form>
     </div>

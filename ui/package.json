@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack",
     "watch": "webpack --watch --progress",
-    "prettier": "prettier --write \"./**/*.{js,jsx,ts,tsx}\""
+    "prettier": "prettier --write .babelrc \"./**/*.{js,jsx,ts,tsx,html,json}\""
   },
   "author": "",
   "license": "MIT",
