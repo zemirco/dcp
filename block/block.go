@@ -144,14 +144,27 @@ type IPParameter struct {
 
 var _ Block = &IPParameter{}
 
-// NewIPParameter returns a new block.
-func NewIPParameter(hasInfo, hasQualifier bool) *IPParameter {
+// NewIPParameterQualifier returns a new block.
+func NewIPParameterQualifier() *IPParameter {
 	return &IPParameter{
 		header: header{
 			Option:       option.IP,
 			Suboption:    suboption.IPParameter,
-			HasInfo:      hasInfo,
-			HasQualifier: hasQualifier,
+			Length:       14,
+			HasInfo:      false,
+			HasQualifier: true,
+		},
+	}
+}
+
+// NewIPParameterInfo returns a new block.
+func NewIPParameterInfo() *IPParameter {
+	return &IPParameter{
+		header: header{
+			Option:       option.IP,
+			Suboption:    suboption.IPParameter,
+			HasInfo:      true,
+			HasQualifier: false,
 		},
 	}
 }
@@ -462,4 +475,71 @@ func (d *DeviceInitiative) MarshalBinary() ([]byte, error) {
 // Len returns length for name of station block.
 func (d *DeviceInitiative) Len() int {
 	return d.header.len() + 2
+}
+
+// ControlResponse is a control response block.
+type ControlResponse struct {
+	header
+	Response  option.Option
+	Suboption suboption.Suboption
+	Error     uint8
+}
+
+var _ Block = &ControlResponse{}
+
+// NewControlResponse returns a new block.
+func NewControlResponse(hasInfo bool) *ControlResponse {
+	return &ControlResponse{
+		header: header{
+			HasInfo: hasInfo,
+		},
+	}
+}
+
+// UnmarshalBinary turns bytes into struct.
+func (c *ControlResponse) UnmarshalBinary(b []byte) error {
+	if err := c.header.unmarshalBinary(b); err != nil {
+		return err
+	}
+
+	offset := c.header.len()
+
+	c.Response = option.Option(b[offset])
+	offset++
+
+	c.Suboption = suboption.Suboption(b[offset])
+	offset++
+
+	c.Error = b[offset]
+
+	return nil
+}
+
+// MarshalBinary converts struct into byte slice.
+func (c *ControlResponse) MarshalBinary() ([]byte, error) {
+	b := make([]byte, c.Len())
+
+	bh, err := c.header.marshalBinary()
+	if err != nil {
+		return b, err
+	}
+	offset := 0
+
+	copy(b[offset:], bh)
+	offset += c.header.len()
+
+	b[offset] = byte(c.Response)
+	offset++
+
+	b[offset] = byte(c.Suboption)
+	offset++
+
+	b[offset] = c.Error
+
+	return b, nil
+}
+
+// Len returns length for name of station block.
+func (c *ControlResponse) Len() int {
+	return c.header.len() + 1 + 1 + 1
 }

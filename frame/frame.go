@@ -71,6 +71,7 @@ type Telegram struct {
 	DeviceInstance       *block.DeviceInstance
 	ManufacturerSpecific *block.ManufacturerSpecific
 	DeviceInitiative     *block.DeviceInitiative
+	ControlResponse      *block.ControlResponse
 }
 
 // UnmarshalBinary unmarshals a byte slice into a EthernetII.
@@ -186,7 +187,7 @@ func (t *Telegram) decodeBlock(b []byte) int {
 	fmt.Println("length", length)
 
 	hasInfo := t.ServiceID == service.Identify && t.ServiceType == service.Response
-	hasQualifier := false
+	// hasQualifier := false
 
 	switch {
 
@@ -201,7 +202,7 @@ func (t *Telegram) decodeBlock(b []byte) int {
 
 	case opt == option.IP && subopt == suboption.IPParameter:
 
-		t.IPParameter = block.NewIPParameter(hasInfo, hasQualifier)
+		t.IPParameter = block.NewIPParameterInfo()
 		if err := t.IPParameter.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}
@@ -238,6 +239,16 @@ func (t *Telegram) decodeBlock(b []byte) int {
 
 		fmt.Printf("%#v\n", t.DeviceInitiative)
 		fmt.Println(t.DeviceInitiative.Value)
+
+	case opt == option.Control && subopt == suboption.Response:
+
+		t.ControlResponse = block.NewControlResponse(hasInfo)
+		if err := t.ControlResponse.UnmarshalBinary(b); err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%#v\n", t.ControlResponse)
+		fmt.Println(t.ControlResponse.Error)
 	}
 
 	return 1 + 1 + 2 + int(length)
@@ -251,13 +262,6 @@ type Frame struct {
 
 // NewIdentifyRequest returns an identify request.
 func NewIdentifyRequest(source net.HardwareAddr) *Frame {
-
-	// b := &block.All{
-	// 	Header: block.Header{
-	// 		Option:    option.All,
-	// 		Suboption: suboption.All,
-	// 	},
-	// }
 
 	b := block.NewAll()
 
@@ -295,7 +299,6 @@ func NewSetIPParameterRequest(dst, src net.HardwareAddr, b *block.IPParameter) *
 			ResponseDelay: 255,
 			DCPDataLength: uint16(b.Len()),
 			IPParameter:   b,
-			// All: b,
 		},
 	}
 }
@@ -303,9 +306,6 @@ func NewSetIPParameterRequest(dst, src net.HardwareAddr, b *block.IPParameter) *
 // MarshalBinary converts struct into byte slice.
 func (f *Frame) MarshalBinary() ([]byte, error) {
 	size := f.EthernetII.Len() + f.Telegram.Len()
-	if f.All != nil {
-		size += f.All.Len()
-	}
 
 	b := make([]byte, size)
 	i := 0

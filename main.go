@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/zemirco/dcp/block"
 	"github.com/zemirco/dcp/frame"
 )
 
@@ -25,11 +26,11 @@ func main() {
 		panic(err)
 	}
 
-	f := frame.NewIdentifyRequest(interf.HardwareAddr)
-	b, err := f.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
+	// f := frame.NewIdentifyRequest(interf.HardwareAddr)
+	// b, err := f.MarshalBinary()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, htons(0x8892))
 
@@ -43,20 +44,22 @@ func main() {
 		Ifindex: interf.Index,
 	}
 
-	// // request block
-	// rb := block.NewIPParameter(false, true)
-	// rb.IPAddress = []byte{0x00, 0x01, 0x02, 0x03}
-	// rb.Subnetmask = []byte{0x00, 0x01, 0x02, 0x03}
-	// rb.StandardGateway = []byte{0x00, 0x01, 0x02, 0x03}
+	// request block
+	rb := block.NewIPParameterQualifier()
+	rb.IPAddress = []byte{0xac, 0x13, 0x68, 0x03}
+	rb.Subnetmask = []byte{0xff, 0xff, 0x00, 0x00}
+	rb.StandardGateway = []byte{0x00, 0x00, 0x00, 0x00}
 
-	// req := frame.NewSetIPParameterRequest(interf.HardwareAddr, interf.HardwareAddr, rb)
-	// b, err := req.MarshalBinary()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	destination := []byte{0x00, 0x09, 0xe5, 0x00, 0x9a, 0x20}
 
-	// spew.Dump(req)
-	// spew.Dump(b)
+	req := frame.NewSetIPParameterRequest(destination, interf.HardwareAddr, rb)
+	b, err := req.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	spew.Dump(req)
+	spew.Dump(b)
 
 	if err := syscall.Sendto(fd, b, 0, &addr); err != nil {
 		panic(err)
