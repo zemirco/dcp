@@ -168,7 +168,11 @@ func (t *Telegram) MarshalBinary() ([]byte, error) {
 
 // Len returns length.
 func (t *Telegram) Len() int {
-	return 12
+	length := 12
+	if t.IPParameter != nil {
+		length += t.IPParameter.Len()
+	}
+	return length
 }
 
 func (t *Telegram) decodeBlock(b []byte) int {
