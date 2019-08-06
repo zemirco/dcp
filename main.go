@@ -2,15 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
 	"syscall"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/rakyll/statik/fs"
+	"github.com/gorilla/mux"
 	"github.com/zemirco/dcp/frame"
 )
 
@@ -23,32 +23,49 @@ func htons(n int) int {
 
 var db = make(map[string]frame.Frame)
 
+var (
+	t *template.Template
+)
+
+func init() {
+	t = template.Must(template.ParseFiles("ui/src/index.html"))
+}
+
 func main() {
 
-	mode := flag.String("mode", "development", "switch between local file system and embedded one.")
-	flag.Parse()
+	r := mux.NewRouter()
 
-	// add file server
-	if *mode == "production" {
-		statikFS, err := fs.New()
+	r.PathPrefix("/public/").Handler(http.StripPrefix("/public/", http.FileServer(http.Dir("ui/public"))))
+
+	r.HandleFunc("/api/json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(db)
+	})
+
+	r.Methods(http.MethodGet).Path("/api/{mac}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		mac := vars["mac"]
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(db[mac])
+	})
+
+	r.Methods(http.MethodPost).Path("/api/{mac}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var f frame.Frame
+		err := json.NewDecoder(r.Body).Decode(&f)
 		if err != nil {
 			panic(err)
 		}
-		http.Handle("/", http.FileServer(statikFS))
-	} else {
-		fmt.Println("serving files from local file system")
-		http.Handle("/", http.FileServer(http.Dir("ui/public")))
-	}
+		spew.Dump(f)
+	})
 
-	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(db)
+	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Execute(w, nil)
 	})
 
 	// start server
 	go func() {
 		fmt.Println("server running at http://localhost:8085. ctrl+c to stop it.")
-		log.Fatal(http.ListenAndServe(":8085", nil))
+		log.Fatal(http.ListenAndServe(":8085", r))
 	}()
 
 	ifname := "enxa44cc8e54721"
