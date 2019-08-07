@@ -6,15 +6,14 @@ import (
 
 	"github.com/zemirco/dcp/block"
 	"github.com/zemirco/dcp/option"
-	"github.com/zemirco/dcp/service"
 	"github.com/zemirco/dcp/suboption"
 )
 
 // Telegram is a single telegram.
 type Telegram struct {
-	FrameID       ID
-	ServiceID     service.ID
-	ServiceType   service.Type
+	FrameID       FrameID
+	ServiceID     ServiceID
+	ServiceType   ServiceType
 	XID           uint32
 	ResponseDelay uint16
 	DCPDataLength uint16
@@ -35,13 +34,13 @@ var _ block.Block = &Telegram{}
 func (t *Telegram) UnmarshalBinary(b []byte) error {
 	i := 0
 
-	t.FrameID = ID(binary.BigEndian.Uint16(b[i : i+2]))
+	t.FrameID = FrameID(binary.BigEndian.Uint16(b[i : i+2]))
 	i += 2
 
-	t.ServiceID = service.ID(b[i])
+	t.ServiceID = ServiceID(b[i])
 	i++
 
-	t.ServiceType = service.Type(b[i])
+	t.ServiceType = ServiceType(b[i])
 	i++
 
 	t.XID = binary.BigEndian.Uint32(b[i : i+4])
@@ -146,7 +145,7 @@ func (t *Telegram) decodeBlock(b []byte) int {
 	length := binary.BigEndian.Uint16(b[2:4])
 	fmt.Println("length", length)
 
-	hasInfo := t.ServiceID == service.Identify && t.ServiceType == service.Response
+	hasInfo := t.ServiceID == Identify && t.ServiceType == Response
 	// hasQualifier := false
 
 	switch {

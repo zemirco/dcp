@@ -5,17 +5,16 @@ import (
 	"net"
 
 	"github.com/zemirco/dcp/block"
-	"github.com/zemirco/dcp/service"
 )
 
-// ID is two bytes.
-type ID uint16
+// FrameID is two bytes.
+type FrameID uint16
 
 // Known frame ids.
 const (
-	IdentifyRequest  ID = 0xfefe
-	IdentifyResponse ID = 0xfeff
-	GetSet           ID = 0xfefd
+	IdentifyRequest  FrameID = 0xfefe
+	IdentifyResponse FrameID = 0xfeff
+	GetSet           FrameID = 0xfefd
 )
 
 // Frame is a single frame.
@@ -39,8 +38,8 @@ func NewIdentifyRequest(source net.HardwareAddr) *Frame {
 		},
 		Telegram: Telegram{
 			FrameID:       IdentifyRequest,
-			ServiceID:     service.Identify,
-			ServiceType:   service.Request,
+			ServiceID:     Identify,
+			ServiceType:   Request,
 			XID:           rand.Uint32(),
 			ResponseDelay: 255,
 			DCPDataLength: uint16(b.Len()),
@@ -59,8 +58,8 @@ func NewSetIPParameterRequest(dst, src net.HardwareAddr, b *block.IPParameter) *
 		},
 		Telegram: Telegram{
 			FrameID:       GetSet,
-			ServiceID:     service.Set,
-			ServiceType:   service.Request,
+			ServiceID:     Set,
+			ServiceType:   Request,
 			XID:           rand.Uint32(),
 			ResponseDelay: 255,
 			DCPDataLength: uint16(b.Len()),
