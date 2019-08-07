@@ -14,6 +14,15 @@ type EthernetII struct {
 	EtherType   uint16
 }
 
+// NewEthernetII returns pointer to ethernet II struct.
+func NewEthernetII(dst, src net.HardwareAddr) *EthernetII {
+	return &EthernetII{
+		Destination: dst,
+		Source:      src,
+		EtherType:   0x8892,
+	}
+}
+
 var _ block.Block = &EthernetII{}
 
 // MarshalBinary converts struct into byte slice.
