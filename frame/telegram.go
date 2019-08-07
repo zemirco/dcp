@@ -162,7 +162,8 @@ func (t *Telegram) decodeBlock(b []byte) int {
 
 	case opt == option.IP && subopt == suboption.IPParameter:
 
-		t.IPParameter = block.NewIPParameterInfo()
+		t.IPParameter = &block.IPParameter{}
+		t.IPParameter.HasInfo = hasInfo
 		if err := t.IPParameter.UnmarshalBinary(b); err != nil {
 			panic(err)
 		}

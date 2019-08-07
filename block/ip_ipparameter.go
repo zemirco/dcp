@@ -17,6 +17,23 @@ type IPParameter struct {
 
 var _ Block = &IPParameter{}
 
+// NewIPParameterWithInfo returns a new block.
+func NewIPParameterWithInfo(ip, subnet, gateway net.IP, info uint16) *IPParameter {
+	return &IPParameter{
+		header: header{
+			Option:       option.IP,
+			Suboption:    suboption.IPParameter,
+			Length:       14,
+			HasInfo:      true,
+			Info:         info,
+			HasQualifier: false,
+		},
+		IPAddress:       ip,
+		Subnetmask:      subnet,
+		StandardGateway: gateway,
+	}
+}
+
 // NewIPParameterQualifier returns a new block.
 func NewIPParameterQualifier() *IPParameter {
 	return &IPParameter{
@@ -30,30 +47,21 @@ func NewIPParameterQualifier() *IPParameter {
 	}
 }
 
-// NewIPParameterInfo returns a new block.
-func NewIPParameterInfo() *IPParameter {
-	return &IPParameter{
-		header: header{
-			Option:       option.IP,
-			Suboption:    suboption.IPParameter,
-			HasInfo:      true,
-			HasQualifier: false,
-		},
-	}
-}
-
 // UnmarshalBinary turns bytes into struct.
 func (i *IPParameter) UnmarshalBinary(b []byte) error {
 	if err := i.header.unmarshalBinary(b); err != nil {
 		return err
 	}
 
-	o := i.header.len()
-	i.IPAddress = net.IP(b[o : o+4])
-	o += 4
-	i.Subnetmask = net.IP(b[o : o+4])
-	o += 4
-	i.StandardGateway = net.IP(b[o : o+4])
+	offset := i.header.len()
+
+	i.IPAddress = net.IP(b[offset : offset+4])
+	offset += 4
+
+	i.Subnetmask = net.IP(b[offset : offset+4])
+	offset += 4
+
+	i.StandardGateway = net.IP(b[offset : offset+4])
 
 	return nil
 }
