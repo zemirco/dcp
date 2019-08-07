@@ -73,8 +73,8 @@ func main() {
 		panic(err)
 	}
 
-	f := dcp.NewIdentifyRequest(interf.HardwareAddr)
-	b, err := f.MarshalBinary()
+	request := dcp.NewIdentifyRequest(interf.HardwareAddr)
+	b, err := request.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
@@ -123,14 +123,17 @@ func main() {
 
 		fmt.Println(n)
 
-		f := dcp.Frame{}
-		if err := f.UnmarshalBinary(buffer); err != nil {
+		response := dcp.Frame{}
+		if err := response.UnmarshalBinary(buffer); err != nil {
 			panic(err)
 		}
 
-		spew.Dump(f)
+		spew.Dump(response)
 
-		db[f.Source.String()] = f
+		// save device to db in case we have an answer to our identify request
+		if request.XID == response.XID {
+			db[response.Source.String()] = response
+		}
 
 	}
 

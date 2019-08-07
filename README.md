@@ -21,3 +21,14 @@ If you don't want to use `sudo` give rights via `setcap`.
 ```sh
 sudo setcap cap_net_raw=ep main
 ```
+
+## UI
+
+There is a demo application with a web based user interface inside `./ui`.
+
+```sh
+cd ui
+go build main.go && ./main.go
+```
+
+Open http://localhost:8085/ in your browser to see a list of all devices in your network.
