@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"syscall"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
@@ -19,10 +20,10 @@ func htons(n int) int {
 	return int(int16(byte(n))<<8 | int16(byte(n>>8)))
 }
 
-var db = make(map[string]dcp.Frame)
-
 var (
-	t *template.Template
+	t    *template.Template
+	db   = make(map[string]dcp.Frame)
+	last time.Time
 )
 
 func init() {
@@ -37,20 +38,30 @@ func main() {
 
 	r.HandleFunc("/api/json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(db)
+		if err := json.NewEncoder(w).Encode(db); err != nil {
+			panic(err)
+		}
+	})
+
+	r.HandleFunc("/api/last", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(last); err != nil {
+			panic(err)
+		}
 	})
 
 	r.Methods(http.MethodGet).Path("/api/{mac}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		mac := vars["mac"]
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(db[mac])
+		if err := json.NewEncoder(w).Encode(db[mac]); err != nil {
+			panic(err)
+		}
 	})
 
 	r.Methods(http.MethodPost).Path("/api/{mac}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var f dcp.Frame
-		err := json.NewDecoder(r.Body).Decode(&f)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
 			panic(err)
 		}
 		spew.Dump(f)
@@ -111,6 +122,8 @@ func main() {
 	if err := syscall.Sendto(fd, b, 0, &addr); err != nil {
 		panic(err)
 	}
+
+	last = time.Now()
 
 	// start reading incoming data
 	for {

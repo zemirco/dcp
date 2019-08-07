@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { render } from 'react-dom'
 import { BrowserRouter, Route, Link, Switch } from 'react-router-dom'
+import { formatDistance } from 'date-fns'
 
 const App = () => {
   const [devices, setDevices] = useState([])
+  const [last, setLast] = useState(new Date())
 
   const request = async () => {
     const result = await fetch('/api/json')
     const data = await result.json()
-    console.log(data)
+
+    const response = await fetch('/api/last')
+    const l = await response.json()
+
     setDevices(data)
+    setLast(new Date(l))
   }
 
   useEffect(() => {
@@ -46,6 +52,12 @@ const App = () => {
           })}
         </tbody>
       </table>
+      <p>
+        Last scan:{' '}
+        {formatDistance(last, new Date(), {
+          addSuffix: true
+        })}
+      </p>
     </div>
   )
 }
