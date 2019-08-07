@@ -1,15 +1,42 @@
 package block
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/zemirco/dcp/option"
+	"github.com/zemirco/dcp/suboption"
+)
 
 func TestAllAllUnmarshalBinary(t *testing.T) {
-	// todo: write test
+	b := []byte{0xff, 0xff, 0x00, 0x00}
+	var a All
+	if err := a.UnmarshalBinary(b); err != nil {
+		t.Error(err)
+	}
+	if a.Option != option.All {
+		t.Errorf("expected %d; got %d", option.All, a.Option)
+	}
+	if a.Suboption != suboption.All {
+		t.Errorf("expected %d; got %d", suboption.All, a.Suboption)
+	}
 }
 
 func TestAllAllMarshalBinary(t *testing.T) {
-	// todo: write test
+	a := NewAll()
+	b, err := a.MarshalBinary()
+	if err != nil {
+		t.Error(err)
+	}
+	expected := []byte{0xff, 0xff, 0x00, 0x00}
+	if diff := cmp.Diff(b, expected); diff != "" {
+		t.Error(diff)
+	}
 }
 
 func TestAllAllLen(t *testing.T) {
-	// todo: write test
+	a := NewAll()
+	if a.Len() != 4 {
+		t.Errorf("expected %d; got %d", 4, a.Len())
+	}
 }
