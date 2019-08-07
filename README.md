@@ -1,6 +1,8 @@
 
 # Discovery and Basic Configuration Protocol (DCP)
 
+[![CircleCI](https://circleci.com/gh/zemirco/dcp.svg?style=svg)](https://circleci.com/gh/zemirco/dcp)
+
 Native Go implementation.
 
 ... work in progress ..

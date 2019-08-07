@@ -14,8 +14,6 @@ import (
 	"github.com/zemirco/dcp/frame"
 )
 
-const etherType uint16 = 0x8892
-
 // host order (usually little endian) -> network order (big endian)
 func htons(n int) int {
 	return int(int16(byte(n))<<8 | int16(byte(n>>8)))
