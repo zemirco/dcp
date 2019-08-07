@@ -2,7 +2,6 @@
 # Discovery and Basic Configuration Protocol (DCP)
 
 [![GoDoc](https://godoc.org/github.com/zemirco/dcp?status.svg)](https://godoc.org/github.com/zemirco/dcp)
-
 [![CircleCI](https://circleci.com/gh/zemirco/dcp.svg?style=svg)](https://circleci.com/gh/zemirco/dcp)
 
 Native Go implementation.
