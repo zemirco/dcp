@@ -11,7 +11,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
-	"github.com/zemirco/dcp/frame"
+	"github.com/zemirco/dcp"
 )
 
 // host order (usually little endian) -> network order (big endian)
@@ -19,21 +19,21 @@ func htons(n int) int {
 	return int(int16(byte(n))<<8 | int16(byte(n>>8)))
 }
 
-var db = make(map[string]frame.Frame)
+var db = make(map[string]dcp.Frame)
 
 var (
 	t *template.Template
 )
 
 func init() {
-	t = template.Must(template.ParseFiles("ui/src/index.html"))
+	t = template.Must(template.ParseFiles("src/index.html"))
 }
 
 func main() {
 
 	r := mux.NewRouter()
 
-	r.PathPrefix("/public/").Handler(http.StripPrefix("/public/", http.FileServer(http.Dir("ui/public"))))
+	r.PathPrefix("/public/").Handler(http.StripPrefix("/public/", http.FileServer(http.Dir("public"))))
 
 	r.HandleFunc("/api/json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -48,7 +48,7 @@ func main() {
 	})
 
 	r.Methods(http.MethodPost).Path("/api/{mac}").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var f frame.Frame
+		var f dcp.Frame
 		err := json.NewDecoder(r.Body).Decode(&f)
 		if err != nil {
 			panic(err)
@@ -73,7 +73,7 @@ func main() {
 		panic(err)
 	}
 
-	f := frame.NewIdentifyRequest(interf.HardwareAddr)
+	f := dcp.NewIdentifyRequest(interf.HardwareAddr)
 	b, err := f.MarshalBinary()
 	if err != nil {
 		panic(err)
@@ -123,7 +123,7 @@ func main() {
 
 		fmt.Println(n)
 
-		f := frame.Frame{}
+		f := dcp.Frame{}
 		if err := f.UnmarshalBinary(buffer); err != nil {
 			panic(err)
 		}

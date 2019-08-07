@@ -1,4 +1,4 @@
-package frame
+package dcp
 
 import (
 	"encoding/binary"
