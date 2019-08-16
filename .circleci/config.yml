@@ -23,8 +23,8 @@ jobs:
           name: POST SeriesCI
           command: |
             go test ./... -coverprofile cover.out
-            curl \
+            go tool cover -func cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}' | curl \
               --header "Authorization: Token ${TOKEN}" \
-              --data value=${go tool cover -func cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}'} \
+              --data value="${@-}" \
               --data sha="${CIRCLE_SHA1}" \
               https://seriesci.com/api/repos/zemirco/dcp/cov/values
