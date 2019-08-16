@@ -18,3 +18,13 @@ jobs:
       - run: golint -set_exit_status ./...
       - run: staticcheck ./...
       - run: go test -race -v ./...
+
+      - run:
+          name: POST SeriesCI
+          command: |
+            go test ./... -coverprofile cover.out
+            curl \
+              --header "Authorization: Token ${TOKEN}" \
+              --data value=${go tool cover -func cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}'} \
+              --data sha="${CIRCLE_SHA1}" \
+              https://seriesci.com/api/repos/zemirco/dcp/cov/values
