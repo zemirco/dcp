@@ -1,5 +1,10 @@
 package block
 
+import (
+	"github.com/zemirco/dcp/option"
+	"github.com/zemirco/dcp/suboption"
+)
+
 // NameOfStation is a name of station block.
 type NameOfStation struct {
 	header
@@ -7,6 +12,21 @@ type NameOfStation struct {
 }
 
 var _ Block = &NameOfStation{}
+
+// NewNameOfStationWithInfo returns new NameOfStation block.
+func NewNameOfStationWithInfo(info uint16, name string) *NameOfStation {
+	return &NameOfStation{
+		header: header{
+			Option:       option.Properties,
+			Suboption:    suboption.NameOfStation,
+			Length:       uint16(len(name) + 2),
+			HasInfo:      true,
+			Info:         info,
+			HasQualifier: false,
+		},
+		NameOfStation: name,
+	}
+}
 
 // NewNameOfStation returns a new block.
 func NewNameOfStation(hasInfo bool) *NameOfStation {
