@@ -3,6 +3,7 @@
 
 [![GoDoc](https://godoc.org/github.com/zemirco/dcp?status.svg)](https://godoc.org/github.com/zemirco/dcp)
 [![CircleCI](https://circleci.com/gh/zemirco/dcp.svg?style=svg)](https://circleci.com/gh/zemirco/dcp)
+[![SeriesCI](https://seriesci.com/zemirco/dcp/series/master/cov.svg)](https://seriesci.com/zemirco/dcp/series/master/cov)
 
 Native Go implementation.
 
